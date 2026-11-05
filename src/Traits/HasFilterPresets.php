@@ -38,7 +38,7 @@ trait HasFilterPresets
                     ->where('resource_class', get_class($this))
                     ->first();
                 if ($savedFilterSet) {
-                    $this->tableFilters = [...$this->tableFilters, ...$savedFilterSet->filters];
+                    $this->tableFilters  = collect($this->tableFilters)->concat($savedFilterSet->filters)->all();
                     $this->filterSetName = $savedFilterSet->name;
                 }
                 return;
@@ -50,7 +50,7 @@ trait HasFilterPresets
                 ->first();
 
             if ($defaultPreset) {
-                $this->tableFilters = [...$this->tableFilters, ...$defaultPreset->filters];
+                $this->tableFilters  = collect($this->tableFilters)->concat($defaultPreset->filters)->all();
                 $this->filterSetName = $defaultPreset->name . ' (Default)';
             }
         } catch (\Exception $e) {
@@ -115,7 +115,7 @@ trait HasFilterPresets
                     ->label(__('filament-filter-presets::labels.manage_filters'))
                     ->icon('heroicon-m-cog-6-tooth')
                     ->modalHeading(__('filament-filter-presets::labels.manage_filters'))
-                    ->modalContent(fn($livewire) => view('filament-filter-presets::components.manage-filters-modal', [
+                    ->modalContent(fn ($livewire) => view('filament-filter-presets::components.manage-filters-modal', [
                         'presets' => FilterPreset::where('user_id', Auth::id())->where(
                             'resource_class',
                             get_class($livewire),
@@ -136,7 +136,7 @@ trait HasFilterPresets
         $rawFilters = $this->getTableFiltersForm()->getState();
 
         $filters = collect($rawFilters)->filter(
-            fn($filter) => !empty($filter['values']) || !empty($filter['value']),
+            fn ($filter) => filled($filter['values'] ?? "") || filled($filter['value'] ?? "")
         )->all();
 
         if (empty($filters)) {
@@ -150,12 +150,12 @@ trait HasFilterPresets
 
         try {
             $filterPreset = FilterPreset::create([
-                'user_id' => Auth::id(),
-                'name' => $data['name'],
+                'user_id'        => Auth::id(),
+                'name'           => $data['name'],
                 'resource_class' => get_class($this),
-                'filters' => $filters,
-                'description' => $data['description'] ?? null,
-                'is_default' => $data['is_default'] ?? false,
+                'filters'        => $filters,
+                'description'    => $data['description'] ?? null,
+                'is_default'     => $data['is_default'] ?? false,
             ]);
 
             if ($data['is_default'] ?? false) {
@@ -295,7 +295,7 @@ trait HasFilterPresets
         if ($defaultPreset) {
             // Get normalized filters and convert them to Filament structure
             $normalizedFilters = $defaultPreset->getNormalizedFilters();
-            $filamentFilters = FilterPreset::convertToFilamentStructure($normalizedFilters);
+            $filamentFilters   = FilterPreset::convertToFilamentStructure($normalizedFilters);
 
             // Apply the filters
             $livewire->tableFilters = $filamentFilters;
